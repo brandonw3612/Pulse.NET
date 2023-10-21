@@ -20,7 +20,7 @@ public class AsyncCumulativeTaskDebouncer<TParameter, TParameterBatch>
     public required TimeSpan TaskTimeout { private get; init; }
     
     /// <summary>
-    /// Task to be invoked.
+    /// Task to be invoked on the latest parameter batch.
     /// </summary>
     public required Func<TParameterBatch, Task> BatchTask { private get; init; }
     

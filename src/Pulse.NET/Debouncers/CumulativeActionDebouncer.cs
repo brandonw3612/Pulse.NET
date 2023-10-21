@@ -7,6 +7,8 @@
 /// <typeparam name="TParameterBatch">Type of the parameter batch provided to the action.</typeparam>
 public class CumulativeActionDebouncer<TParameter, TParameterBatch>
 {
+    #region User-specified fields
+
 #if NET7_0_OR_GREATER
     /// <summary>
     /// Timeout for the action.
@@ -48,6 +50,8 @@ public class CumulativeActionDebouncer<TParameter, TParameterBatch>
     /// </summary>
     private Func<TParameterBatch> ParameterBatchInitializer { get; }
 #endif
+
+    #endregion
     
     /// <summary>
     /// Timer for the debouncer.

@@ -6,6 +6,8 @@
 /// <remarks>When no invoking signal is received for a certain amount of time, the action is actually invoked.</remarks>
 public class AsyncTaskDebouncer
 {
+    #region User-specified fields
+
 #if NET7_0_OR_GREATER
     /// <summary>
     /// Timeout for the task.
@@ -27,6 +29,8 @@ public class AsyncTaskDebouncer
     /// </summary>
     private Func<Task> Task { get; }
 #endif
+
+    #endregion
     
     /// <summary>
     /// Timer for the debouncer.

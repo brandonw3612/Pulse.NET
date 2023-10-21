@@ -10,6 +10,8 @@ namespace Pulse.Debouncers;
 /// </remarks>
 public class AsyncTaskDebouncer<TParameter>
 {
+    #region User-specified fields
+
 #if NET7_0_OR_GREATER
     /// <summary>
     /// Timeout for the task.
@@ -31,6 +33,8 @@ public class AsyncTaskDebouncer<TParameter>
     /// </summary>
     private Func<TParameter, Task> Task { get; }
 #endif
+
+    #endregion
 
     /// <summary>
     /// Timer for the debouncer.
