@@ -21,7 +21,7 @@
         <PackageIcon>lib_icon.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <Description>
-            Pulse.NET is a .NET library providing enhancements to the workflow management in your .NET applications. We introduce multiple debouncer and throttler implementations, both for different use cases and action types. The library is implemented with thread safety, while also exposing interface with great ease to use.
+            Pulse.NET is a .NET library providing enhancements to the workflow management in your .NET applications. We introduce multiple debouncer and throttler implementations, both for different use cases and action types. The library is implemented with thread safety, while also exposing interfaces with great ease to use.
         </Description>
         <Copyright>Copyright (c) Brandon Wong 2023</Copyright>
         <PackageProjectUrl>https://github.com/brandonw3612/Pulse.NET</PackageProjectUrl>
