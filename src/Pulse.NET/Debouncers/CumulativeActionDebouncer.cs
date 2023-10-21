@@ -5,7 +5,7 @@
 /// </summary>
 /// <typeparam name="TParameter">Type of the parameter provided by the invoking signal.</typeparam>
 /// <typeparam name="TParameterBatch">Type of the parameter batch provided to the action.</typeparam>
-public class CumulativeActionDebouncer<TParameter, TParameterBatch> where TParameterBatch : notnull
+public class CumulativeActionDebouncer<TParameter, TParameterBatch>
 {
 #if NET7_0_OR_GREATER
     /// <summary>
@@ -55,14 +55,14 @@ public class CumulativeActionDebouncer<TParameter, TParameterBatch> where TParam
     private readonly Timer _debounceTimer;
     
     /// <summary>
-    /// Access lock for the timer.
+    /// Access semaphore for the timer.
     /// </summary>
-    private readonly object _timerLock;
+    private readonly SemaphoreSlim _timerSemaphore;
     
     /// <summary>
-    /// Access lock for the action.
+    /// Access semaphore for the action.
     /// </summary>
-    private readonly object _actionLock;
+    private readonly SemaphoreSlim _actionSemaphore;
     
     /// <summary>
     /// State machine for latest parameter batch cumulated in the debouncer.
@@ -91,8 +91,8 @@ public class CumulativeActionDebouncer<TParameter, TParameterBatch> where TParam
     {
         _latestParameterBatch = new();
         _debounceTimer = new Timer(OnDebounceTimerElapsed, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-        _timerLock = new();
-        _actionLock = new();
+        _timerSemaphore = new(1);
+        _actionSemaphore = new(1);
     }
 #else
     /// <summary>
@@ -111,8 +111,8 @@ public class CumulativeActionDebouncer<TParameter, TParameterBatch> where TParam
         _latestParameterBatch = new();
         CumulatingFunction = cumulatingFunction;
         _debounceTimer = new Timer(OnDebounceTimerElapsed, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-        _timerLock = new();
-        _actionLock = new();
+        _timerSemaphore = new(1);
+        _actionSemaphore = new(1);
     }
 #endif
 
@@ -121,23 +121,34 @@ public class CumulativeActionDebouncer<TParameter, TParameterBatch> where TParam
     /// </summary>
     private void OnDebounceTimerElapsed(object? _)
     {
-        lock (_actionLock)
+        _actionSemaphore.Wait();
+        try
         {
-            BatchAction.Invoke(LatestParameterBatch);
+            if (!_latestParameterBatch.TryGetValue(out var parameter)) return;
+            BatchAction.Invoke(parameter);
             _latestParameterBatch.Invalidate();
+        }
+        finally
+        {
+            _actionSemaphore.Release();
         }
     }
 
     /// <summary>
-    /// Invokes the debouncer with a parameter to be cumulated into the latest parameter batch.
+    /// Sends an invoking signal with a parameter to be cumulated into the parameter batch.
     /// </summary>
     /// <param name="parameter">Parameter to be cumulated into the latest parameter batch.</param>
     public void Invoke(TParameter parameter)
     {
-        lock (_timerLock)
+        _timerSemaphore.Wait();
+        try
         {
-            _latestParameterBatch.SetValue(CumulatingFunction(LatestParameterBatch, parameter));
+            _latestParameterBatch.SetValue(CumulatingFunction.Invoke(LatestParameterBatch, parameter));
             _debounceTimer.Change(ActionTimeout, Timeout.InfiniteTimeSpan);
+        }
+        finally
+        {
+            _timerSemaphore.Release();
         }
     }
 }

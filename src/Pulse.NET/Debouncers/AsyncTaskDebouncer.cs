@@ -34,12 +34,12 @@ public class AsyncTaskDebouncer
     private readonly Timer _debounceTimer;
     
     /// <summary>
-    /// Access lock for the timer.
+    /// Access semaphore for the timer.
     /// </summary>
-    private readonly object _timerLock;
+    private readonly SemaphoreSlim _timerSemaphore;
     
     /// <summary>
-    /// Access semaphore lock for the task.
+    /// Access semaphore for the task.
     /// </summary>
     private readonly SemaphoreSlim _taskSemaphore;
 
@@ -50,7 +50,7 @@ public class AsyncTaskDebouncer
     public AsyncTaskDebouncer()
     {
         _debounceTimer = new Timer(OnDebounceTimerElapsed, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-        _timerLock = new();
+        _timerSemaphore = new(1);
         _taskSemaphore = new(1);
     }
 #else
@@ -64,7 +64,7 @@ public class AsyncTaskDebouncer
         TaskTimeout = taskTimeout;
         Task = task;
         _debounceTimer = new Timer(OnDebounceTimerElapsed, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-        _timerLock = new();
+        _timerSemaphore = new(1);
         _taskSemaphore = new(1);
     }
 #endif
@@ -86,13 +86,18 @@ public class AsyncTaskDebouncer
     }
 
     /// <summary>
-    /// Sends a invoking signal to the debouncer.
+    /// Sends an invoking signal to the debouncer.
     /// </summary>
     public void Invoke()
     {
-        lock (_timerLock)
+        _timerSemaphore.Wait();
+        try
         {
             _debounceTimer.Change(TaskTimeout, Timeout.InfiniteTimeSpan);
+        }
+        finally
+        {
+            _timerSemaphore.Release();
         }
     }
 }

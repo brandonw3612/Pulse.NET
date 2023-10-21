@@ -9,7 +9,7 @@
 ///     When no invoking signal is received for a certain amount of time, the task is actually invoked,
 ///     on the latest updated parameter batch.
 /// </remarks>
-public class AsyncCumulativeTaskDebouncer<TParameter, TParameterBatch> where TParameterBatch : notnull
+public class AsyncCumulativeTaskDebouncer<TParameter, TParameterBatch>
 {
     #region User-specified fields
 
@@ -63,12 +63,12 @@ public class AsyncCumulativeTaskDebouncer<TParameter, TParameterBatch> where TPa
     private readonly Timer _debounceTimer;
     
     /// <summary>
-    /// Access lock for the timer.
+    /// Access semaphore for the timer.
     /// </summary>
-    private readonly object _timerLock;
+    private readonly SemaphoreSlim _timerSemaphore;
     
     /// <summary>
-    /// Access semaphore lock for the task.
+    /// Access semaphore for the task.
     /// </summary>
     private readonly SemaphoreSlim _taskSemaphore;
     
@@ -99,7 +99,7 @@ public class AsyncCumulativeTaskDebouncer<TParameter, TParameterBatch> where TPa
     {
         _latestParameterBatch = new();
         _debounceTimer = new Timer(OnDebounceTimerElapsed, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-        _timerLock = new();
+        _timerSemaphore = new(1);
         _taskSemaphore = new(1);
     }
 #else
@@ -119,7 +119,7 @@ public class AsyncCumulativeTaskDebouncer<TParameter, TParameterBatch> where TPa
         _latestParameterBatch = new();
         CumulatingFunction = cumulatingFunction;
         _debounceTimer = new Timer(OnDebounceTimerElapsed, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-        _timerLock = new();
+        _timerSemaphore = new(1);
         _taskSemaphore = new(1);
     }
 #endif
@@ -132,7 +132,8 @@ public class AsyncCumulativeTaskDebouncer<TParameter, TParameterBatch> where TPa
         await _taskSemaphore.WaitAsync();
         try
         {
-            await BatchTask.Invoke(LatestParameterBatch);
+            if (!_latestParameterBatch.TryGetValue(out var parameter)) return;
+            await BatchTask.Invoke(parameter);
             _latestParameterBatch.Invalidate();
         }
         finally
@@ -142,15 +143,28 @@ public class AsyncCumulativeTaskDebouncer<TParameter, TParameterBatch> where TPa
     }
 
     /// <summary>
-    /// Invokes the debouncer with a parameter to be cumulated into the latest parameter batch.
+    /// Sends an invoking signal with a parameter to be cumulated into the parameter batch.
     /// </summary>
     /// <param name="parameter">Parameter to be cumulated into the latest parameter batch.</param>
     public void Invoke(TParameter parameter)
     {
-        lock (_timerLock)
+        _timerSemaphore.Wait();
+        try
         {
-            _latestParameterBatch.SetValue(CumulatingFunction(LatestParameterBatch, parameter));
+            _taskSemaphore.Wait();
+            try
+            {
+                _latestParameterBatch.SetValue(CumulatingFunction.Invoke(LatestParameterBatch, parameter));
+            }
+            finally
+            {
+                _taskSemaphore.Release();
+            }
             _debounceTimer.Change(TaskTimeout, Timeout.InfiniteTimeSpan);
+        }
+        finally
+        {
+            _timerSemaphore.Release();
         }
     }
 }

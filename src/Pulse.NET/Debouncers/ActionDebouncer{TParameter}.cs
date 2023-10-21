@@ -42,14 +42,14 @@ public class ActionDebouncer<TParameter>
     private readonly Timer _debounceTimer;
     
     /// <summary>
-    /// Access lock for the timer.
+    /// Access semaphore for the timer.
     /// </summary>
-    private readonly object _timerLock;
+    private readonly SemaphoreSlim _timerSemaphore;
     
     /// <summary>
-    /// Access lock for the action.
+    /// Access semaphore for the action.
     /// </summary>
-    private readonly object _actionLock;
+    private readonly SemaphoreSlim _actionSemaphore;
     
     /// <summary>
     /// State machine for latest parameter received by the debouncer.
@@ -64,8 +64,8 @@ public class ActionDebouncer<TParameter>
     {
         _debounceTimer = new Timer(OnDebounceTimerElapsed, null, Timeout.InfiniteTimeSpan,
             Timeout.InfiniteTimeSpan);
-        _timerLock = new();
-        _actionLock = new();
+        _timerSemaphore = new(1);
+        _actionSemaphore = new(1);
         _latestParameter = new();
     }
 #else
@@ -80,8 +80,8 @@ public class ActionDebouncer<TParameter>
         Action = action;
         _latestParameter = new();
         _debounceTimer = new Timer(OnDebounceTimerElapsed, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-        _timerLock = new();
-        _actionLock = new();
+        _timerSemaphore = new(1);
+        _actionSemaphore = new(1);
     }
 #endif
     
@@ -90,24 +90,42 @@ public class ActionDebouncer<TParameter>
     /// </summary>
     private void OnDebounceTimerElapsed(object? _)
     {
-        lock (_actionLock)
+        _actionSemaphore.Wait();
+        try
         {
             if (!_latestParameter.TryGetValue(out var parameter)) return;
             Action.Invoke(parameter);
             _latestParameter.Invalidate();
         }
+        finally
+        {
+            _actionSemaphore.Release();
+        }
     }
 
     /// <summary>
-    /// Sends a invoking signal with the action's parameter to the debouncer.
+    /// Sends an invoking signal with the action's parameter to the debouncer.
     /// </summary>
     /// <param name="parameter">Parameter to be passed to the action.</param>
     public void Invoke(TParameter parameter)
     {
-        lock (_timerLock)
+        _timerSemaphore.Wait();
+        try
         {
-            _latestParameter.SetValue(parameter);
+            _actionSemaphore.Wait();
+            try
+            {
+                _latestParameter.SetValue(parameter);
+            }
+            finally
+            {
+                _actionSemaphore.Release();
+            }
             _debounceTimer.Change(ActionTimeout, Timeout.InfiniteTimeSpan);
+        }
+        finally
+        {
+            _timerSemaphore.Release();
         }
     }
 }

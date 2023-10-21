@@ -39,14 +39,14 @@ public class ActionDebouncer
     private readonly Timer _debounceTimer;
 
     /// <summary>
-    /// Access lock for the timer.
+    /// Access semaphore for the timer.
     /// </summary>
-    private readonly object _timerLock;
-    
+    private readonly SemaphoreSlim _timerSemaphore;
+
     /// <summary>
-    /// Access lock for the action.
+    /// Access semaphore for the action.
     /// </summary>
-    private readonly object _actionLock;
+    private readonly SemaphoreSlim _actionSemaphore;
 
 #if NET7_0_OR_GREATER
     /// <summary>
@@ -56,8 +56,8 @@ public class ActionDebouncer
     {
         _debounceTimer = new Timer(OnDebounceTimerElapsed, null, Timeout.InfiniteTimeSpan,
             Timeout.InfiniteTimeSpan);
-        _timerLock = new();
-        _actionLock = new();
+        _timerSemaphore = new(1);
+        _actionSemaphore = new(1);
     }
 #else
     /// <summary>
@@ -71,8 +71,8 @@ public class ActionDebouncer
         Action = action;
         _debounceTimer = new Timer(OnDebounceTimerElapsed, null, Timeout.InfiniteTimeSpan,
             Timeout.InfiniteTimeSpan);
-        _timerLock = new();
-        _actionLock = new();
+        _timerSemaphore = new(1);
+        _actionSemaphore = new(1);
     }
 #endif
 
@@ -81,9 +81,14 @@ public class ActionDebouncer
     /// </summary>
     private void OnDebounceTimerElapsed(object? _)
     {
-        lock (_actionLock)
+        _actionSemaphore.Wait();
+        try
         {
             Action.Invoke();
+        }
+        finally
+        {
+            _actionSemaphore.Release();
         }
     }
 
@@ -92,9 +97,14 @@ public class ActionDebouncer
     /// </summary>
     public void Invoke()
     {
-        lock (_timerLock)
+        _timerSemaphore.Wait();
+        try
         {
             _debounceTimer.Change(ActionTimeout, Timeout.InfiniteTimeSpan);
+        }
+        finally
+        {
+            _timerSemaphore.Release();
         }
     }
 }
