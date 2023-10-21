@@ -19,7 +19,7 @@
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <PackageIcon>lib_icon.png</PackageIcon>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageReadmeFile>README_NuGet.md</PackageReadmeFile>
         <Description>
             Pulse.NET is a .NET library providing enhancements to the workflow management in your .NET applications. We introduce multiple debouncer and throttler implementations, both for different use cases and action types. The library is implemented with thread safety, while also exposing interfaces with great ease to use.
         </Description>
@@ -37,7 +37,7 @@
     
     <ItemGroup>
         <None Include="../../assets/lib_icon.png" Pack="true" PackagePath="/" />
-        <None Include="../../README.md" Pack="true" PackagePath="/" />
+        <None Include="../../assets/README_NuGet.md" Pack="true" PackagePath="/" />
     </ItemGroup>
     
 </Project>
