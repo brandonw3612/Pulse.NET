@@ -2,6 +2,9 @@
     <image src='assets/lib_icon.png' width='64' />
     <br/>
     Pulse.NET
+    <br/>
+    <img alt="GitHub" src="https://img.shields.io/github/license/brandonw3612/Pulse.NET?label=License">
+    <img alt="Nuget (with prereleases)" src="https://img.shields.io/nuget/vpre/Pulse.NET?logo=nuget&label=NuGet%20Package&labelColor=004880">
 </h1>
 
 ## 🌏Overview
