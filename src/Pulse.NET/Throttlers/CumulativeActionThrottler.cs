@@ -24,7 +24,7 @@ public class CumulativeActionThrottler<TParameter, TParameterBatch>
     /// <summary>
     /// Action to be invoked on the latest parameter batch.
     /// </summary>
-    public required Func<TParameterBatch, Task> BatchAction { private get; init; }
+    public required Action<TParameterBatch> BatchAction { private get; init; }
     
     /// <summary>
     /// Function to cumulate the latest parameter into the latest parameter batch.
@@ -40,17 +40,17 @@ public class CumulativeActionThrottler<TParameter, TParameterBatch>
     /// Interval for the action.
     /// </summary>
     private TimeSpan ActionInterval { get; }
-    
+
     /// <summary>
     /// Action to be invoked on the latest parameter batch.
     /// </summary>
-    private Func<TParameterBatch, Task> BatchAction { get; }
-    
+    private Action<TParameterBatch> BatchAction { get; }
+
     /// <summary>
     /// Function to cumulate the latest parameter into the latest parameter batch.
     /// </summary>
     private Func<TParameterBatch, TParameter, TParameterBatch> CumulatingFunction { get; }
-    
+
     /// <summary>
     /// Initializer for the parameter batch. Invoked after the action is invoked.
     /// </summary>
@@ -63,27 +63,27 @@ public class CumulativeActionThrottler<TParameter, TParameterBatch>
     /// Timer for the throttler.
     /// </summary>
     private readonly Timer _throttleTimer;
-    
+
     /// <summary>
     /// Access semaphore for the timer.
     /// </summary>
     private readonly SemaphoreSlim _timerSemaphore;
-    
+
     /// <summary>
     /// Access semaphore for the task.
     /// </summary>
     private readonly SemaphoreSlim _taskSemaphore;
-    
+
     /// <summary>
     /// Access semaphore for the throttler's state.
     /// </summary>
     private readonly SemaphoreSlim _stateSemaphore;
-    
+
     /// <summary>
     /// Whether the throttler is in a throttling period.
     /// </summary>
     private bool _isThrottling;
-    
+
     /// <summary>
     /// State machine for latest parameter batch cumulated in the throttler.
     /// </summary>
@@ -123,7 +123,9 @@ public class CumulativeActionThrottler<TParameter, TParameterBatch>
     /// <param name="batchAction">Action to be invoked on the latest parameter batch.</param>
     /// <param name="cumulatingFunction">Function to cumulate the latest parameter into the latest parameter batch.</param>
     /// <param name="parameterBatchInitializer">Initializer for the parameter batch.</param>
-    public CumulativeActionThrottler(TimeSpan actionInterval, Func<TParameterBatch, Task> batchAction, Func<TParameterBatch, TParameter, TParameterBatch> cumulatingFunction, Func<TParameterBatch> parameterBatchInitializer)
+    public CumulativeActionThrottler(TimeSpan actionInterval, Action<TParameterBatch> batchAction,
+        Func<TParameterBatch, TParameter, TParameterBatch> cumulatingFunction,
+        Func<TParameterBatch> parameterBatchInitializer)
     {
         ActionInterval = actionInterval;
         BatchAction = batchAction;
@@ -140,19 +142,19 @@ public class CumulativeActionThrottler<TParameter, TParameterBatch>
     /// <summary>
     /// Triggered when the throttler timer elapses.
     /// </summary>
-    private async void OnThrottleTimerElapsed(object? _)
+    private void OnThrottleTimerElapsed(object? _)
     {
         if (!_isThrottling) return;
-        await _stateSemaphore.WaitAsync();
+        _stateSemaphore.Wait();
         try
         {
             if (!_isThrottling) return;
             _isThrottling = false;
-            await _taskSemaphore.WaitAsync();
+            _taskSemaphore.Wait();
             try
             {
                 if (!_latestParameterBatch.TryGetValue(out var parameterBatch)) return;
-                await BatchAction(parameterBatch);
+                BatchAction.Invoke(parameterBatch);
                 _latestParameterBatch.Invalidate();
             }
             finally
@@ -181,7 +183,6 @@ public class CumulativeActionThrottler<TParameter, TParameterBatch>
         {
             _taskSemaphore.Release();
         }
-
         _timerSemaphore.Wait();
         try
         {

@@ -12,7 +12,7 @@
     <PropertyGroup>
         <PackageId>Pulse.NET</PackageId>
         <Title>Pulse.NET</Title>
-        <Version>0.0.1-alpha</Version>
+        <Version>0.0.2-alpha</Version>
         <Authors>Brandon Wong</Authors>
         <Product>Pulse.NET</Product>
         <IncludeSymbols>true</IncludeSymbols>
