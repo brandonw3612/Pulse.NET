@@ -112,6 +112,7 @@ public class ActionThrottler
         {
             if (!_isThrottling) return;
             _isThrottling = false;
+            if (IsInstantaneous) return;
             _actionSemaphore.Wait();
             try
             {

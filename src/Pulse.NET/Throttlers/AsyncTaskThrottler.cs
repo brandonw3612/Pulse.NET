@@ -112,6 +112,7 @@ public class AsyncTaskThrottler
         {
             if (!_isThrottling) return;
             _isThrottling = false;
+            if (IsInstantaneous) return;
             await _taskSemaphore.WaitAsync();
             try
             {
