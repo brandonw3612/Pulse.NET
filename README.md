@@ -24,6 +24,12 @@ This library currently support following frameworks.
 
 ## 🛠️Usage
 
+Use NuGet Package Manager to install this library to your project.
+
+```powershell
+Install-Package Pulse.NET
+```
+
 After adding current library as a reference to your project, you are able to use the utilities we provide. Following instructions may be helpful when you use the library.
 
 ### 0. Do I need it?

@@ -1,12 +1,12 @@
 # Pulse.NET
 
-## 🌏Overview
+## 🌏 Overview
 
 Pulse.NET is a .NET library providing enhancements to the workflow management in your .NET applications. We introduce multiple debouncer and throttler implementations, both for different use cases and action types. The library is implemented with thread safety, while also exposing interfaces with great ease to use.
 
 To be more specific, this library helps you improve the performance of your application, by limiting invoking frequency of your workflow when not necessary, while maintaining sufficient reliability thanks to our parameter-handling strategy.
 
-## ⚙️Requirements
+## ⚙️ Requirements
 
 This library currently support following frameworks.
 
@@ -15,7 +15,13 @@ This library currently support following frameworks.
 * .NET Standard 2.0+
 * .NET 6.0+
 
-## 🛠️Usage
+## 🛠️ Usage
+
+Use NuGet Package Manager to install this library to your project.
+
+```powershell
+Install-Package Pulse.NET
+```
 
 After adding current library as a reference to your project, you are able to use the utilities we provide. Following instructions may be helpful when you use the library.
 
@@ -39,6 +45,6 @@ There are 3 types of parameter strategy in this library.
 
 Both are supported by our library. You can just simply choose the type you need for the task. For your information, synchronous functions are called actions and asynchronous ones are called tasks in our definition.
 
-## 👋Contribution
+## 👋 Contribution
 
 Feel free to contribute to this library by creating an issue or a pull request on GitHub.

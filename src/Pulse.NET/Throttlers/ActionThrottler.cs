@@ -22,6 +22,11 @@ public class ActionThrottler
     /// Action to be invoked.
     /// </summary>
     public required Action Action { private get; init; }
+    
+    /// <summary>
+    /// Whether the task is instantly invoked before entering a throttling period.
+    /// </summary>
+    public required bool IsInstantaneous { private get; init; }
 #else
     /// <summary>
     /// Interval for the action.
@@ -32,6 +37,11 @@ public class ActionThrottler
     /// Action to be invoked.
     /// </summary>
     private Action Action { get; }
+    
+    /// <summary>
+    /// Whether the task is instantly invoked before entering a throttling period.
+    /// </summary>
+    private bool IsInstantaneous { get; }
 #endif
 
     #endregion
@@ -77,11 +87,13 @@ public class ActionThrottler
     /// Constructs a throttler for a parameterless synchronous action.
     /// </summary>
     /// <param name="actionInterval">Interval for the action.</param>
-    /// <param name="action">Action to be invoked.</param>
-    public ActionThrottler(TimeSpan actionInterval, Action action)
+    /// <param name="action">Action to be invoked.</param>\
+    /// <param name="isInstantaneous">Whether the action is instantly invoked before entering a throttling period.</param>
+    public ActionThrottler(TimeSpan actionInterval, Action action, bool isInstantaneous = false)
     {
         ActionInterval = actionInterval;
         Action = action;
+        IsInstantaneous = isInstantaneous;
         _throttleTimer = new(OnThrottleTimerElapsed, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         _timerSemaphore = new(1);
         _actionSemaphore = new(1);
@@ -122,6 +134,18 @@ public class ActionThrottler
     public void Invoke()
     {
         if (_isThrottling) return;
+        if (IsInstantaneous)
+        {
+            _actionSemaphore.Wait();
+            try
+            {
+                Action();
+            }
+            finally
+            {
+                _actionSemaphore.Release();
+            }
+        }
         _stateSemaphore.Wait();
         try
         {

@@ -22,6 +22,11 @@ public class AsyncTaskThrottler
     /// Task to be invoked.
     /// </summary>
     public required Func<Task> Task { private get; init; }
+    
+    /// <summary>
+    /// Whether the task is instantly invoked before entering a throttling period.
+    /// </summary>
+    public required bool IsInstantaneous { private get; init; }
 #else
     /// <summary>
     /// Interval for the task.
@@ -32,6 +37,11 @@ public class AsyncTaskThrottler
     /// Task to be invoked.
     /// </summary>
     private Func<Task> Task { get; }
+    
+    /// <summary>
+    /// Whether the task is instantly invoked before entering a throttling period.
+    /// </summary>
+    private bool IsInstantaneous { get; }
 #endif
 
     #endregion
@@ -78,10 +88,12 @@ public class AsyncTaskThrottler
     /// </summary>
     /// <param name="taskInterval">Interval for the task.</param>
     /// <param name="task">Task to be invoked.</param>
-    public AsyncTaskThrottler(TimeSpan taskInterval, Func<Task> task)
+    /// <param name="isInstantaneous">Whether the task is instantly invoked before entering a throttling period.</param>
+    public AsyncTaskThrottler(TimeSpan taskInterval, Func<Task> task, bool isInstantaneous = false)
     {
         TaskInterval = taskInterval;
         Task = task;
+        IsInstantaneous = isInstantaneous;
         _throttleTimer = new(OnThrottleTimerElapsed, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         _timerSemaphore = new(1);
         _taskSemaphore = new(1);
@@ -119,15 +131,27 @@ public class AsyncTaskThrottler
     /// <summary>
     /// Sends an invoking signal to the throttler.
     /// </summary>
-    public void Invoke()
+    public async Task InvokeAsync()
     {
         if (_isThrottling) return;
-        _stateSemaphore.Wait();
+        if (IsInstantaneous)
+        {
+            await _taskSemaphore.WaitAsync();
+            try
+            {
+                await Task();
+            }
+            finally
+            {
+                _taskSemaphore.Release();
+            }
+        }
+        await _stateSemaphore.WaitAsync();
         try
         {
             if (_isThrottling) return;
             _isThrottling = true;
-            _timerSemaphore.Wait();
+            await _timerSemaphore.WaitAsync();
             try
             {
                 _throttleTimer.Change(TaskInterval, Timeout.InfiniteTimeSpan);
