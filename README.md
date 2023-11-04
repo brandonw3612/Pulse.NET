@@ -1,10 +1,14 @@
 <h1 align='center'>
-    <image src='assets/lib_icon.png' width='64' />
-    <br/>
-    Pulse.NET
-    <br/>
+  <image src='assets/lib_icon.png' width='64' />
+  <br/>
+  Pulse.NET
+  <br/>
+  <a href="https://github.com/brandonw3612/Pulse.NET/blob/main/LICENSE">
     <img alt="GitHub" src="https://img.shields.io/github/license/brandonw3612/Pulse.NET?label=License">
-    <img alt="Nuget (with prereleases)" src="https://img.shields.io/nuget/vpre/Pulse.NET?logo=nuget&label=NuGet%20Package&labelColor=004880">
+  </a>
+  <a href="https://www.nuget.org/packages/Pulse.NET">
+    <img alt="NuGet (with prereleases)" src="https://img.shields.io/nuget/vpre/Pulse.NET?logo=nuget&label=NuGet%20Package&labelColor=004880">
+  </a>
 </h1>
 
 ## 🌏Overview

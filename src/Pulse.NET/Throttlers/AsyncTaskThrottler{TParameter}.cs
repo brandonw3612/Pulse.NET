@@ -23,6 +23,11 @@ public class AsyncTaskThrottler<TParameter>
     /// Task to be invoked.
     /// </summary>
     public required Func<TParameter, Task> Task { private get; init; }
+    
+    /// <summary>
+    /// Whether the task is instantly invoked before entering a throttling period.
+    /// </summary>
+    public required bool IsInstantaneous { private get; init; }
 #else
     /// <summary>
     /// Interval for the task.
@@ -33,6 +38,11 @@ public class AsyncTaskThrottler<TParameter>
     /// Task to be invoked.
     /// </summary>
     private Func<TParameter, Task> Task { get; }
+    
+    /// <summary>
+    /// Whether the task is instantly invoked before entering a throttling period.
+    /// </summary>
+    private bool IsInstantaneous { get; }
 #endif
 
     #endregion
@@ -85,10 +95,12 @@ public class AsyncTaskThrottler<TParameter>
     /// </summary>
     /// <param name="taskInterval">Interval for the task.</param>
     /// <param name="task">Task to be invoked.</param>
-    public AsyncTaskThrottler(TimeSpan taskInterval, Func<TParameter, Task> task)
+    /// <param name="isInstantaneous">Whether the task is instantly invoked before entering a throttling period.</param>
+    public AsyncTaskThrottler(TimeSpan taskInterval, Func<TParameter, Task> task, bool isInstantaneous = false)
     {
         TaskInterval = taskInterval;
         Task = task;
+        IsInstantaneous = isInstantaneous;
         _throttleTimer = new(OnThrottleTimerElapsed, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         _timerSemaphore = new(1);
         _taskSemaphore = new(1);
@@ -112,6 +124,7 @@ public class AsyncTaskThrottler<TParameter>
             try
             {
                 if (!_lastParameter.TryGetValue(out var parameter)) return;
+                if (IsInstantaneous) return;
                 await Task(parameter);
                 _lastParameter.Invalidate();
             }
@@ -130,24 +143,39 @@ public class AsyncTaskThrottler<TParameter>
     /// Sends an invoking signal with the task's parameter to the throttler.
     /// </summary>
     /// <param name="parameter">Parameter to be passed to the task.</param>
-    public void Invoke(TParameter parameter)
+    public async Task InvokeAsync(TParameter parameter)
     {
-        _taskSemaphore.Wait();
-        try
+        if (!IsInstantaneous)
         {
-            _lastParameter.SetValue(parameter);
-        }
-        finally
-        {
-            _taskSemaphore.Release();
+            await _taskSemaphore.WaitAsync();
+            try
+            {
+                _lastParameter.SetValue(parameter);
+            }
+            finally
+            {
+                _taskSemaphore.Release();
+            }
         }
         if (_isThrottling) return;
-        _stateSemaphore.Wait();
+        if (IsInstantaneous)
+        {
+            await _taskSemaphore.WaitAsync();
+            try
+            {
+                await Task.Invoke(parameter);
+            }
+            finally
+            {
+                _taskSemaphore.Release();
+            }
+        }
+        await _stateSemaphore.WaitAsync();
         try
         {
             if (_isThrottling) return;
             _isThrottling = true;
-            _timerSemaphore.Wait();
+            await _timerSemaphore.WaitAsync();
             try
             {
                 _throttleTimer.Change(TaskInterval, Timeout.InfiniteTimeSpan);
